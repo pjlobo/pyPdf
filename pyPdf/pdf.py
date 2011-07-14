@@ -196,7 +196,43 @@ class PdfFileWriter(object):
     # @param use_128bit Boolean argument as to whether to use 128bit
     # encryption.  When false, 40bit encryption will be used.  By default, this
     # flag is on.
-    def encrypt(self, user_pwd, owner_pwd = None, use_128bit = True):
+    # @param P Unsigned 32-bit quantity containing a set of flags specifying
+    # which access permissions shall be granted when the document is opened
+    # with user access. By default all access permissions are granted. See
+    # Table 22 on page 61 of PDF 32000-1:2008, which is partially reproduced
+    # here. Bits are numbered from 1 to 32. The security handler revision is
+    # set to 2 when use_128bit = False and 3 when use_128bit = True.
+    # NOTE: PDF integer objects can be interpreted as binary values in a signed
+    #   twos-complement form. Since all the reserved high-order flag bits in
+    #   the encryption dictionary’s P value are required to be 1, the integer
+    #   value P shall be specified as a negative integer. For example, assuming
+    #   revision 2 of the security handler, the value -44 permits printing and
+    #   copying but disallows modifying the contents and annotations.
+    # Bit 3: Print document either at the highest quality level
+    #   (if use_128bit = False) or possibly at a reduced quality level
+    #   depending on whether bit 12 is also set (if use_128bit = True).
+    # Bit 4: Modify the contents of the document by operations other than those
+    #   controlled by bits 6, 9, and 11.
+    # Bit 5: If use_128bit = False, copy or otherwise extract text and graphics
+    #   from the document, including extracting text and graphics (in support
+    #   of accessibility to users with disabilities or for other purposes). If
+    #   use_128bit = True, cCopy or otherwise extract text and graphics from
+    #   the document by operations other than that controlled by bit 10.
+    # Bit 6: Add or modify text annotations, fill in interactive form fields,
+    #   and, if bit 4 is also set, create or modify interactive form fields
+    #   (including signature fields).
+    # Bits 9 to 12 are only functional if use_128bit = True
+    # Bit 9: Fill in existing interactive form fields (including signature
+    #   fields), even if bit 6 is clear.
+    # Bit 10: Extract text and graphics (in support of accessibility to users
+    #   with disabilities or for other purposes).
+    # Bit 11: Assemble the document (insert, rotate, or delete pages and create
+    #   bookmarks or thumbnail images), even if bit 4 is clear.
+    # Bit 12: Print the document to a representation from which a faithful
+    #   digital copy of the PDF content could be generated. When this bit is
+    #   clear (and bit 3 is set), printing is limited to a low-level
+    #   representation of the appearance, possibly of degraded quality.
+    def encrypt(self, user_pwd, owner_pwd = None, use_128bit = True, P = -1):
         import time, random
         if owner_pwd == None:
             owner_pwd = user_pwd
@@ -208,8 +244,6 @@ class PdfFileWriter(object):
             V = 1
             rev = 2
             keylen = 40 / 8
-        # permit everything:
-        P = -1
         O = ByteStringObject(_alg33(owner_pwd, user_pwd, rev, keylen))
         ID_1 = md5(repr(time.time())).digest()
         ID_2 = md5(repr(random.random())).digest()
